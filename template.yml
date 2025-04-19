@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+
+Resources:
+  # DynamoDB Table for Button Clicks
+  ButtonClicksTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ButtonClicks
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S  # String type
+        - AttributeName: timestamp
+          AttributeType: S  # String type
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH  # Partition key
+        - AttributeName: timestamp
+          KeyType: RANGE  # Sort key
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  # Kinesis Stream to Capture Button Clicks
+  ButtonClicksStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: ButtonClicksStream
+      ShardIteratorType: TRIM_HORIZON  # Starts reading from the earliest available data
+
+  # Lambda Function to Process Button Clicks
+  ButtonClicksProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: button_clicks_processor.handler  # This refers to your Lambda function handler (e.g., button_clicks_processor.py file and handler function)
+      Runtime: python3.8  # You can choose other runtimes, but this is suitable for Python
+      MemorySize: 128
+      Timeout: 15  # In seconds
+      Environment:
+        Variables:
+          BUTTON_CLICKS_TABLE: !Ref ButtonClicksTable  # Reference to DynamoDB table created
+          BUTTON_CLICKS_STREAM: !Ref ButtonClicksStream  # Reference to Kinesis stream created
+      Events:
+        ButtonClicksStreamEvent:
+          Type: Kinesis
+          Properties:
+            Stream: !Ref ButtonClicksStream
+            BatchSize: 5  # Number of records to send to Lambda at once
+            StartingPosition: TRIM_HORIZON  # Starts reading from the earliest data
+
+Outputs:
+  ButtonClicksTable:
+    Description: "DynamoDB Table for Button Clicks"
+    Value: !Ref ButtonClicksTable
+
+  ButtonClicksStream:
+    Description: "Kinesis Stream for Button Clicks"
+    Value: !Ref ButtonClicksStream
+
+  ButtonClicksProcessorFunction:
+    Description: "Lambda Function for Processing Button Clicks"
+    Value: !Ref ButtonClicksProcessorFunction

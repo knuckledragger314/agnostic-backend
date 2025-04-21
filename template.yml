@@ -26,25 +26,25 @@ Resources:
     Type: AWS::Kinesis::Stream
     Properties:
       Name: ButtonClicksStream
-      ShardIteratorType: TRIM_HORIZON  # Starts reading from the earliest available data
+      ShardCount: 1  # Number of shards in the stream
 
   # Lambda Function to Process Button Clicks
   ButtonClicksProcessorFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: button_clicks_processor.handler  # This refers to your Lambda function handler (e.g., button_clicks_processor.py file and handler function)
-      Runtime: python3.8  # You can choose other runtimes, but this is suitable for Python
+      Handler: app/button_clicks_processor.handler  # This refers to your Lambda function handler (e.g., button_clicks_processor.py file and handler function)
+      Runtime: python3.10  # You can choose other runtimes, but this is suitable for Python
       MemorySize: 128
       Timeout: 15  # In seconds
       Environment:
         Variables:
           BUTTON_CLICKS_TABLE: !Ref ButtonClicksTable  # Reference to DynamoDB table created
-          BUTTON_CLICKS_STREAM: !Ref ButtonClicksStream  # Reference to Kinesis stream created
+          BUTTON_CLICKS_STREAM: !GetAtt ButtonClicksStream.Arn  # Reference to Kinesis stream created
       Events:
         ButtonClicksStreamEvent:
           Type: Kinesis
           Properties:
-            Stream: !Ref ButtonClicksStream
+            Stream: !GetAtt ButtonClicksStream.Arn
             BatchSize: 5  # Number of records to send to Lambda at once
             StartingPosition: TRIM_HORIZON  # Starts reading from the earliest data
 
